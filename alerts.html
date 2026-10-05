@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alertas de SLA · Inova+ Helpdesk</title>
+  <!-- Ícone do aplicativo -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="alternate icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#16121f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    .sev { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid; white-space: nowrap; }
+    .sev-critico { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-bd); }
+    .sev-atencao { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-bd); }
+    .sev-info    { color: var(--info); background: var(--info-bg); border-color: var(--info-bd); }
+    .reason { font-size: 13px; color: var(--text-2); }
+    .col-age { white-space: nowrap; }
+    .tabs-wrap { background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 0 12px; }
+    .table-card { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    .refresh { font-size: 12.5px; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+    @media (max-width: 800px) { .col-reason, .col-age { display: none; } }
+  </style>
+</head>
+<body>
+
+<div id="page" class="page" data-nav="alerts" hidden>
+  <div class="page-header">
+    <div>
+      <h1>Alertas de SLA</h1>
+      <p>Tickets que precisam de ação para não estourar o prazo de atendimento.</p>
+    </div>
+    <div class="page-actions">
+      <span class="refresh"><span id="sync-label">—</span> · próxima em <span id="countdown">60</span>s</span>
+      <button class="btn btn-sm" id="btn-refresh" type="button"><i class="fa-solid fa-rotate-right"></i> Atualizar</button>
+    </div>
+  </div>
+
+  <section class="kpis" aria-label="Resumo de alertas">
+    <div class="card kpi is-danger"><span class="kpi-label"><i class="fa-solid fa-circle-exclamation"></i> SLA violado</span><span class="kpi-value" id="k-breach">0</span><span class="kpi-foot">Prazo de resolução vencido</span></div>
+    <div class="card kpi is-warn"><span class="kpi-label"><i class="fa-solid fa-hourglass-half"></i> Em risco</span><span class="kpi-value" id="k-warn">0</span><span class="kpi-foot">Menos de 25% do prazo restante</span></div>
+    <div class="card kpi is-info"><span class="kpi-label"><i class="fa-solid fa-inbox"></i> Novos na fila</span><span class="kpi-value" id="k-new">0</span><span class="kpi-foot">Abertos nas últimas 24h</span></div>
+    <div class="card kpi is-ok"><span class="kpi-label"><i class="fa-regular fa-circle-check"></i> Dentro do prazo</span><span class="kpi-value" id="k-ok">0</span><span class="kpi-foot">Não resolvidos sem alerta</span></div>
+  </section>
+
+  <div class="tabs-wrap">
+    <div class="tabs" id="tabs" role="tablist" style="border-bottom:none">
+      <button class="tab active" data-tab="all" role="tab">Todos <span class="count" id="c-all">0</span></button>
+      <button class="tab" data-tab="breach" role="tab">Violados <span class="count" id="c-breach">0</span></button>
+      <button class="tab" data-tab="warn" role="tab">Em risco <span class="count" id="c-warn">0</span></button>
+      <button class="tab" data-tab="critical" role="tab">Críticos sem atendimento <span class="count" id="c-critical">0</span></button>
+      <button class="tab" data-tab="new" role="tab">Novos na fila <span class="count" id="c-new">0</span></button>
+    </div>
+  </div>
+  <section class="card table-card">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Alerta</th><th>Ticket</th><th class="col-reason">Motivo</th><th>Responsável</th><th>SLA</th><th class="col-age">Aberto</th><th></th></tr></thead>
+        <tbody id="alerts-body"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="auth.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="alerts.js"></script>
+<script src="layout.js"></script>
+<script src="notifications.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const H = HD.text;
+  let tab = 'all';
+  let seconds = 60;
+
+  const SEV = {
+    critico: { label: 'Crítico', icon: 'fa-solid fa-circle-exclamation' },
+    atencao: { label: 'Atenção', icon: 'fa-solid fa-triangle-exclamation' },
+    info:    { label: 'Info',    icon: 'fa-solid fa-circle-info' },
+  };
+
+  function buildAlerts() {
+    const out = [];
+    HD.tickets().filter(HD.isOpen).forEach(t => {
+      const s = HD.sla(t);
+      const age = (Date.now() - (HD.created(t)?.getTime() || Date.now())) / 36e5;
+      if (s.state === 'breach')
+        out.push({ t, kind: 'breach', sev: 'critico', reason: `Prazo de resolução de ${HD.SLA_HOURS[t.priority]?.res ?? 24}h vencido.` });
+      else if (s.state === 'warn')
+        out.push({ t, kind: 'warn', sev: 'atencao', reason: 'Menos de 25% do prazo restante.' });
+      if (t.status === 'Aberto' && t.priority === 'Crítica')
+        out.push({ t, kind: 'critical', sev: 'critico', reason: 'Prioridade crítica ainda sem atendimento.' });
+      if (t.status === 'Aberto' && age < 24)
+        out.push({ t, kind: 'new', sev: t.priority === 'Crítica' || t.priority === 'Alta' ? 'atencao' : 'info', reason: 'Novo ticket aguardando atendimento.' });
+    });
+    // Agrupa: uma linha por ticket, com a severidade mais alta e todos os motivos
+    const rank = { critico: 0, atencao: 1, info: 2 };
+    const byTicket = new Map();
+    out.forEach(a => {
+      const g = byTicket.get(a.t.id) || { t: a.t, sev: a.sev, kinds: new Set(), reasons: [] };
+      if (rank[a.sev] < rank[g.sev]) g.sev = a.sev;
+      g.kinds.add(a.kind);
+      g.reasons.push(a.reason);
+      byTicket.set(a.t.id, g);
+    });
+    return [...byTicket.values()].sort((a, b) => rank[a.sev] - rank[b.sev] || (HD.sla(a.t).pct ?? 100) - (HD.sla(b.t).pct ?? 100));
+  }
+
+  function renderPage() {
+    const all = buildAlerts();
+    const open = HD.tickets().filter(HD.isOpen);
+    const by = k => all.filter(a => a.kinds.has(k));
+    $('k-breach').textContent = by('breach').length;
+    $('k-warn').textContent = by('warn').length;
+    $('k-new').textContent = by('new').length;
+    $('k-ok').textContent = open.filter(t => HD.sla(t).state === 'ok').length;
+    $('c-all').textContent = all.length;
+    ['breach', 'warn', 'critical', 'new'].forEach(k => { $('c-' + k).textContent = by(k).length; });
+
+    const rows = tab === 'all' ? all : by(tab);
+    $('alerts-body').innerHTML = rows.length ? rows.map(a => {
+      const t = a.t, sv = SEV[a.sev];
+      return `<tr onclick="location.href='${HD.ticketUrl(t.id)}'">
+        <td><span class="sev sev-${a.sev}"><i class="${sv.icon}"></i>${sv.label}</span></td>
+        <td><a class="t-subject" href="${HD.ticketUrl(t.id)}" style="max-width:300px">${H(t.subject)}</a>
+            <div class="t-sub"><span class="mono">${H(t.id)}</span><span class="dot-sep"></span>${HD.prio(t.priority)}</div></td>
+        <td class="col-reason reason">${a.reasons.join('<br>')}</td>
+        <td>${HD.person(t.assignee)}</td>
+        <td>${HD.slaHtml(t)}</td>
+        <td class="col-age muted">${HD.rel(HD.created(t))}</td>
+        <td style="text-align:right">${t.status === 'Aberto'
+          ? `<button class="btn btn-sm btn-primary" data-attend="${H(t.id)}"><i class="fa-solid fa-headset"></i> Atender</button>`
+          : `<a class="btn btn-sm" href="${HD.ticketUrl(t.id)}">Abrir</a>`}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7"><div class="empty"><i class="fa-regular fa-circle-check" style="color:var(--ok)"></i>
+        <strong>Nenhum alerta${tab !== 'all' ? ' nesta categoria' : ''}</strong>Todos os tickets estão dentro do prazo.</div></td></tr>`;
+    HD.updateCounts();
+  }
+  window.renderPage = renderPage;
+
+  async function refresh() {
+    seconds = 60;
+    try {
+      await TicketAPI.list();
+      $('sync-label').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    } catch { $('sync-label').textContent = 'Offline (dados locais)'; }
+    renderPage();
+  }
+
+  $('tabs').addEventListener('click', e => {
+    const b = e.target.closest('.tab'); if (!b) return;
+    tab = b.dataset.tab;
+    document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('active', x === b));
+    renderPage();
+  });
+
+  $('alerts-body').addEventListener('click', async e => {
+    const b = e.target.closest('[data-attend]'); if (!b) return;
+    e.stopPropagation();
+    b.disabled = true;
+    try { await TicketAPI.attend(b.dataset.attend); }
+    catch (err) { if (err.offline) _localTicketUpdate(b.dataset.attend, { status: 'Em andamento', assignee: HD.me() }); }
+    showToast(`Você assumiu o ticket ${b.dataset.attend}.`, 'success');
+    renderPage();
+  });
+
+  $('btn-refresh').addEventListener('click', refresh);
+
+  window.addEventListener('load', () => {
+    checkAuth();
+    renderPage();
+    refresh();
+    setInterval(() => {
+      seconds--;
+      $('countdown').textContent = seconds;
+      if (seconds <= 0) refresh();
+    }, 1000);
+  });
+})();
+</script>
+</body>
+</html>

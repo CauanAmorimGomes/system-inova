@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Novo ticket · Inova+ Helpdesk</title>
+  <!-- Ícone do aplicativo -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="alternate icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#16121f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    .nt-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+    .form-section { padding: 20px; border-bottom: 1px solid var(--border); }
+    .form-section:last-of-type { border-bottom: none; }
+    .form-section h2 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .form-section > p { font-size: 12.5px; color: var(--text-3); margin-bottom: 14px; }
+
+    .printer-fields { display: none; }
+    .printer-fields.show { display: contents; }
+
+    .prio-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .prio-opt input { position: absolute; opacity: 0; pointer-events: none; }
+    .prio-opt label { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); cursor: pointer; background: #fff; transition: border-color .12s, background .12s; }
+    .prio-opt label:hover { background: var(--surface-2); }
+    .prio-opt label .prio { font-weight: 600; }
+    .prio-opt label small { font-size: 12px; color: var(--text-3); }
+    .prio-opt input:checked + label { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 1px var(--primary); }
+    .prio-opt input:focus-visible + label { box-shadow: 0 0 0 3px var(--primary-ring); }
+
+    .dropzone { border: 1.5px dashed var(--border-strong); border-radius: var(--radius); padding: 22px; text-align: center; cursor: pointer; background: var(--surface-2); transition: border-color .12s, background .12s; }
+    .dropzone:hover, .dropzone.drag { border-color: var(--primary); background: var(--primary-soft); }
+    .dropzone i { font-size: 22px; color: var(--text-3); margin-bottom: 6px; display: block; }
+    .dropzone p { font-size: 13.5px; color: var(--text-2); }
+    .dropzone p b { color: var(--primary); font-weight: 600; }
+    .dropzone small { font-size: 12px; color: var(--text-3); }
+    .file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+    .file-thumb { width: 34px; height: 34px; border-radius: 6px; background: var(--surface-3); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--danger); flex-shrink: 0; }
+    .file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-size { font-size: 11.5px; color: var(--text-3); }
+    .file-remove { background: none; border: none; color: var(--text-3); padding: 6px; border-radius: 6px; }
+    .file-remove:hover { color: var(--danger); background: var(--danger-bg); }
+
+    .form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 var(--radius-lg) var(--radius-lg); flex-wrap: wrap; }
+    .form-foot .left { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+    .form-foot .right { display: flex; gap: 8px; }
+
+    .conn-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .conn-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .conn-chip.online .dot { background: #12b76a; }
+    .conn-chip.offline { color: var(--warn); }
+    .conn-chip.offline .dot { background: #f79009; }
+
+    .sum .dl { grid-template-columns: 1fr auto; }
+    .sum .dl dd { text-align: right; font-weight: 500; }
+    .kb-sug { display: flex; flex-direction: column; gap: 6px; }
+    .kb-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; color: var(--text); text-decoration: none; }
+    .kb-item:hover { border-color: var(--primary); background: var(--primary-soft); text-decoration: none; }
+    .kb-item i { color: var(--primary); margin-top: 3px; }
+    .kb-item small { display: block; color: var(--text-3); font-size: 11.5px; }
+    .tips li { font-size: 13px; color: var(--text-2); margin: 0 0 6px 16px; }
+
+    .success-icon { width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: var(--ok-bg); color: var(--ok); }
+    .success-icon.warn { background: var(--warn-bg); color: var(--warn); }
+    .modal h2 { font-size: 17px; font-weight: 700; text-align: center; }
+    .modal .tid { text-align: center; font-size: 22px; font-weight: 700; color: var(--primary); margin: 4px 0 6px; }
+    .modal > p { text-align: center; font-size: 13.5px; color: var(--text-3); margin-bottom: 16px; }
+    .modal .dl { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 16px; grid-template-columns: 1fr auto; }
+    .modal .dl dd { text-align: right; font-weight: 600; }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .modal-actions .btn-primary { grid-column: 1 / -1; }
+    .offline-hint { font-size: 12.5px; color: var(--text-3); margin-top: 12px; text-align: center; }
+
+    @media (max-width: 1000px) { .nt-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .prio-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<div id="page" class="page" data-nav="new" hidden>
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="tickets.html">Tickets</a><span>/</span><span>Novo ticket</span></div>
+      <h1>Novo ticket</h1>
+      <p>Descreva o problema com o máximo de detalhes — isso acelera o atendimento.</p>
+    </div>
+    <span class="conn-chip" id="conn-chip" title="Conexão com o servidor"><span class="dot"></span><span id="conn-label">Verificando conexão…</span></span>
+  </div>
+
+  <div class="nt-layout">
+    <form class="card" id="ticket-form" novalidate>
+      <section class="form-section">
+        <h2>Problema</h2>
+        <p>O que está acontecendo?</p>
+        <div class="form-grid">
+          <div class="field full" data-field="subject">
+            <label for="nt-subject">Assunto <span class="req">*</span><span class="hint" id="subject-count">0/120</span></label>
+            <input class="input" id="nt-subject" name="subject" maxlength="120" placeholder="Ex.: Impressora do financeiro atolando papel" autocomplete="off" />
+            <span class="field-error">Informe um assunto com pelo menos 5 caracteres.</span>
+          </div>
+
+          <div class="field" data-field="category">
+            <label for="nt-category">Categoria <span class="req">*</span></label>
+            <select class="select" id="nt-category" name="category">
+              <option value="">Selecione…</option>
+              <option>Impressora</option><option>Suprimentos</option><option>TI</option><option>Rede</option><option>Outro</option>
+            </select>
+            <span class="field-error">Selecione uma categoria.</span>
+          </div>
+
+          <div class="field" data-field="dept">
+            <label for="nt-dept">Departamento</label>
+            <select class="select" id="nt-dept" name="dept">
+              <option>TI</option><option>Administrativo</option><option>Financeiro</option><option>Operacional</option><option>Marketing</option><option>RH</option><option>Suporte</option>
+            </select>
+          </div>
+
+          <div class="printer-fields" id="printer-fields">
+            <div class="field" data-field="model">
+              <label for="nt-printer-model">Modelo do equipamento</label>
+              <input class="input" id="nt-printer-model" name="model" list="printer-models" placeholder="Ex.: Lexmark MX611" autocomplete="off" />
+              <datalist id="printer-models">
+                <option value="Lexmark MX611"><option value="Lexmark MX722adhe"><option value="Lexmark MS611de">
+                <option value="Lexmark MX522"><option value="Epson L1250"><option value="HP LaserJet Pro M404">
+              </datalist>
+            </div>
+            <div class="field" data-field="serial">
+              <label for="nt-serial">Nº de série</label>
+              <input class="input mono" id="nt-serial" name="serial" placeholder="Ex.: HP-3L8ZK1F9Q2" style="text-transform:uppercase" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="field full" data-field="desc">
+            <label for="nt-desc">Descrição <span class="req">*</span><span class="hint" id="desc-count">0/2000</span></label>
+            <textarea class="textarea" id="nt-desc" name="desc" maxlength="2000" placeholder="O que acontece, desde quando, mensagens de erro exibidas e o que já foi tentado."></textarea>
+            <span class="field-error">Descreva o problema com pelo menos 10 caracteres.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2>Prioridade</h2>
+        <p>Define o prazo de atendimento (SLA).</p>
+        <div class="prio-grid">
+          <div class="prio-opt"><input type="radio" name="priority" id="p-baixa" value="Baixa"><label for="p-baixa"><span class="prio prio-baixa"><span class="prio-bars"><i></i><i></i><i></i></span>Baixa</span><small>Resolução em 72h</small></label></div>
+          <div class="prio-opt"><input type="radio" name="priority" id="p-media" value="Média" checked><label for="p-media"><span class="prio prio-media"><span class="prio-bars"><i></i><i></i><i></i></span>Média</span><small>Resolução em 24h</small></label></div>
+          <div class="prio-opt"><input type="radio" name="priority" id="p-alta" value="Alta"><label for="p-alta"><span class="prio prio-alta"><span class="prio-bars"><i></i><i></i><i></i></span>Alta</span><small>Resolução em 8h</small></label></div>
+          <div class="prio-opt"><input type="radio" name="priority" id="p-critica" value="Crítica"><label for="p-critica"><span class="prio prio-critica"><span class="prio-bars"><i></i><i></i><i></i></span>Crítica</span><small>Resolução em 4h</small></label></div>
+        </div>
+        <input type="hidden" id="nt-priority" value="Média" />
+      </section>
+
+      <section class="form-section">
+        <h2>Contato e local</h2>
+        <p>Onde o técnico encontra você e o equipamento.</p>
+        <div class="form-grid">
+          <div class="field" data-field="location">
+            <label for="nt-location">Local / Sala</label>
+            <input class="input" id="nt-location" name="location" placeholder="Ex.: 2º andar — Sala 204" autocomplete="off" />
+          </div>
+          <div class="field" data-field="contact">
+            <label for="nt-contact">Ramal / Telefone</label>
+            <input class="input" id="nt-contact" name="contact" placeholder="Ex.: 2045 ou (11) 99999-0000" autocomplete="off" />
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <h2>Anexos <span class="muted" style="font-weight:400;font-size:12.5px" id="file-count"></span></h2>
+        <p>Fotos do erro, prints ou PDFs ajudam no diagnóstico.</p>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Anexar arquivos">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p><b>Clique para enviar</b> ou arraste os arquivos aqui</p>
+          <small>PNG, JPG ou PDF · até 10 MB cada · máx. 5 · cole um print com Ctrl+V</small>
+        </div>
+        <input type="file" id="nt-files" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf" multiple hidden />
+        <div class="file-list" id="file-list"></div>
+      </section>
+
+      <div class="form-foot">
+        <div class="left"><i class="fa-regular fa-floppy-disk"></i> <span id="draft-status">Rascunho salvo automaticamente</span></div>
+        <div class="right">
+          <button type="button" class="btn" id="btn-cancel">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit"><span class="spinner"></span><i class="fa-solid fa-paper-plane btn-icon-i"></i> <span id="btn-submit-label">Criar ticket</span></button>
+        </div>
+      </div>
+    </form>
+
+    <aside style="display:flex;flex-direction:column;gap:16px">
+      <section class="card sum">
+        <div class="card-header"><h3>Resumo</h3></div>
+        <div class="card-body">
+          <dl class="dl">
+            <dt>Solicitante</dt><dd id="sum-requester">—</dd>
+            <dt>Categoria</dt><dd id="sum-category">—</dd>
+            <dt>Prioridade</dt><dd id="sum-priority">Média</dd>
+            <dt>Responsável sugerido</dt><dd id="sum-assignee">—</dd>
+          </dl>
+          <div class="divider"></div>
+          <dl class="dl">
+            <dt>1ª resposta até</dt><dd id="sla-resp">—</dd>
+            <dt>Resolução até</dt><dd id="sla-res">—</dd>
+          </dl>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header"><h3><i class="fa-regular fa-lightbulb" style="color:var(--warn)"></i> Artigos que podem ajudar</h3></div>
+        <div class="card-body"><div class="kb-sug" id="kb-suggestions"><p class="muted">Digite o assunto para ver soluções da Base de Conhecimento.</p></div></div>
+      </section>
+
+      <section class="card">
+        <div class="card-header"><h3>Dicas</h3></div>
+        <div class="card-body">
+          <ul class="tips">
+            <li>Informe o <b>código de erro</b> exibido no equipamento.</li>
+            <li>O <b>nº de série</b> fica na etiqueta traseira da impressora.</li>
+            <li>Anexe um <b>print ou foto</b> do problema.</li>
+          </ul>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- Confirmação -->
+<div class="modal-overlay hidden" id="modal-success" role="dialog" aria-modal="true" aria-labelledby="success-title">
+  <div class="modal">
+    <div class="success-icon" id="success-icon"><i class="fa fa-check"></i></div>
+    <h2 id="success-title">Ticket criado</h2>
+    <div class="tid mono" id="success-id">#0000</div>
+    <p id="success-msg">O SLA já está correndo.</p>
+    <dl class="dl">
+      <dt>Responsável</dt><dd id="success-assignee">—</dd>
+      <dt>Prioridade</dt><dd id="success-priority">—</dd>
+      <dt>Resolução até</dt><dd id="success-sla">—</dd>
+    </dl>
+    <div class="modal-actions">
+      <a class="btn btn-primary" id="success-link" href="tickets.html"><i class="fa-solid fa-arrow-right"></i> Abrir o ticket</a>
+      <a class="btn" id="success-list-link" href="tickets.html"><i class="fa-solid fa-list"></i> Ver na fila</a>
+      <button class="btn" type="button" onclick="NewTicket.resetForm()"><i class="fa-solid fa-plus"></i> Criar outro</button>
+    </div>
+    <p class="offline-hint" id="offline-hint" hidden>
+      <i class="fa-solid fa-circle-info"></i> Salvo neste navegador. Inicie o sistema pelo <b>iniciar-servidor.bat</b> para enviar ao servidor.
+    </p>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="auth.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="alerts.js"></script>
+<script src="layout.js"></script>
+<script src="notifications.js"></script>
+<script src="new-ticket.js"></script>
+</body>
+</html>

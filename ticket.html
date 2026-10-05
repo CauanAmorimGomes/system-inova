@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket · Inova+ Helpdesk</title>
+  <!-- Ícone do aplicativo -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="alternate icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#16121f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    .td-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; height: 100%; }
+    .td-main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: var(--bg); }
+    .td-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; }
+    .td-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .td-title h1 { font-size: 19px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; }
+    .td-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 12.5px; color: var(--text-3); }
+
+    .thread { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+    .msg { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; }
+    .msg .avatar { width: 36px; height: 36px; font-size: 12.5px; }
+    .msg-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 16px; box-shadow: var(--shadow-sm); }
+    .msg-card.internal { background: #fffbeb; border-color: #fde68a; }
+    .msg-card.origin { border-left: 3px solid var(--primary); }
+    .msg-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; margin-bottom: 6px; }
+    .msg-head strong { font-weight: 600; }
+    .msg-head .when { color: var(--text-3); font-size: 12px; margin-left: auto; }
+    .msg-body { font-size: 14px; color: var(--text-2); white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
+    .event { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--text-3); padding-left: 48px; }
+    .event i { width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; }
+    .atts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .att { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); font-size: 12.5px; color: var(--text-2); max-width: 240px; text-decoration: none; }
+    a.att:hover { border-color: var(--primary); text-decoration: none; }
+    .att .thumb { width: 34px; height: 34px; border-radius: 6px; background: var(--surface-3) center / cover; display: inline-flex; align-items: center; justify-content: center; color: var(--danger); flex-shrink: 0; }
+    .att span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .composer { background: var(--surface); border-top: 1px solid var(--border); padding: 0 24px 14px; }
+    .composer .tabs { margin-bottom: 10px; }
+    .composer.internal .textarea { background: #fffbeb; border-color: #fcd34d; }
+    .composer .textarea { min-height: 96px; }
+    .composer-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .composer-foot .hint { font-size: 12px; color: var(--text-3); margin-right: auto; }
+    .macro { width: auto; }
+
+    .td-side { border-left: 1px solid var(--border); background: var(--surface); overflow-y: auto; }
+    .side-sec { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .side-sec h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .props { display: flex; flex-direction: column; gap: 12px; }
+    .props .field > label { font-size: 12.5px; }
+    .props .select { height: 34px; font-size: 13.5px; }
+    .requester { display: flex; gap: 12px; align-items: center; }
+    .requester strong { display: block; font-size: 14px; }
+    .requester div span { font-size: 12.5px; color: var(--text-3); }
+    .sla-box { display: flex; flex-direction: column; gap: 10px; }
+    .sla-line { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .sla-line .k { color: var(--text-3); }
+    .progress { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+    .progress > i { display: block; height: 100%; border-radius: 3px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-3); gap: 10px; }
+
+    @media (max-width: 1100px) {
+      .td-layout { grid-template-columns: 1fr; height: auto; }
+      .td-main { overflow: visible; }
+      .thread { overflow: visible; }
+      .td-side { border-left: none; border-top: 1px solid var(--border); }
+      .page-full { height: auto; }
+    }
+    @media (max-width: 640px) {
+      .td-head, .thread, .composer { padding-left: 14px; padding-right: 14px; }
+      .event { padding-left: 0; }
+      .msg { grid-template-columns: 1fr; }
+      .msg > .avatar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="page" class="page-full" data-nav="tickets" hidden>
+  <div class="loading" id="loading"><i class="fa-solid fa-spinner fa-spin"></i> Carregando ticket…</div>
+
+  <div class="td-layout" id="ticket-view" hidden>
+    <section class="td-main">
+      <header class="td-head">
+        <div class="breadcrumb"><a href="tickets.html"><i class="fa-solid fa-arrow-left"></i> Tickets</a><span>/</span><span class="mono" id="bc-id">#0000</span></div>
+        <div class="td-title">
+          <h1 id="t-subject">—</h1>
+          <div class="page-actions" id="t-actions"></div>
+        </div>
+        <div class="td-meta" id="t-meta"></div>
+      </header>
+
+      <div class="thread" id="thread" aria-live="polite"></div>
+
+      <form class="composer" id="composer">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-mode="public" role="tab" aria-selected="true"><i class="fa-regular fa-comment"></i> Resposta pública</button>
+          <button type="button" class="tab" data-mode="internal" role="tab" aria-selected="false"><i class="fa-solid fa-lock"></i> Nota interna</button>
+        </div>
+        <textarea class="textarea" id="reply-text" placeholder="Escreva uma resposta para o solicitante…" maxlength="4000"></textarea>
+        <div class="composer-foot">
+          <span class="hint" id="composer-hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para enviar</span>
+          <select class="select select-sm macro" id="macro" aria-label="Respostas prontas">
+            <option value="">Respostas prontas…</option>
+            <option value="Olá! Recebemos seu chamado e já estamos analisando. Retornamos em breve.">Recebido / em análise</option>
+            <option value="Poderia nos enviar uma foto do erro exibido no equipamento e o número de série (etiqueta traseira)?">Pedir foto e nº de série</option>
+            <option value="Um técnico irá até o local para verificar presencialmente. Por favor, deixe o equipamento ligado.">Visita técnica</option>
+            <option value="O problema foi corrigido. Pode testar e nos confirmar se está tudo funcionando?">Pedir confirmação</option>
+          </select>
+          <select class="select select-sm" id="submit-status" style="width:auto" aria-label="Status após enviar">
+            <option value="">Manter status atual</option>
+            <option value="Em andamento">Enviar e marcar Em andamento</option>
+            <option value="Resolvido">Enviar e marcar Resolvido</option>
+          </select>
+          <button class="btn btn-primary btn-sm" type="submit" id="btn-send"><span class="spinner"></span><i class="fa-solid fa-paper-plane btn-icon-i"></i> Enviar</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="td-side" aria-label="Propriedades do ticket">
+      <div class="side-sec">
+        <h3>Solicitante</h3>
+        <div class="requester" id="t-requester"></div>
+        <dl class="dl" id="t-contact" style="margin-top:12px"></dl>
+      </div>
+
+      <div class="side-sec">
+        <h3>Propriedades</h3>
+        <form class="props" id="props">
+          <div class="field">
+            <label for="p-assignee">Responsável</label>
+            <select class="select" id="p-assignee"></select>
+          </div>
+          <div class="field">
+            <label for="p-status">Status</label>
+            <select class="select" id="p-status">
+              <option>Aberto</option><option>Em andamento</option><option>Resolvido</option><option>Fechado</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="p-priority">Prioridade</label>
+            <select class="select" id="p-priority">
+              <option>Baixa</option><option>Média</option><option>Alta</option><option>Crítica</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="p-category">Categoria</label>
+            <select class="select" id="p-category">
+              <option>Impressora</option><option>Suprimentos</option><option>TI</option><option>Rede</option><option>Outro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="p-dept">Departamento</label>
+            <select class="select" id="p-dept">
+              <option>TI</option><option>Administrativo</option><option>Financeiro</option><option>Operacional</option><option>Marketing</option><option>RH</option><option>Suporte</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit" id="btn-save" disabled><span class="spinner"></span><i class="fa-solid fa-floppy-disk btn-icon-i"></i> Salvar alterações</button>
+        </form>
+      </div>
+
+      <div class="side-sec">
+        <h3>SLA</h3>
+        <div class="sla-box" id="t-sla"></div>
+      </div>
+
+      <div class="side-sec" id="sec-equip" hidden>
+        <h3>Equipamento</h3>
+        <dl class="dl" id="t-equip"></dl>
+      </div>
+
+      <div class="side-sec">
+        <h3>Detalhes</h3>
+        <dl class="dl" id="t-details"></dl>
+      </div>
+    </aside>
+  </div>
+
+  <div class="page" id="not-found" hidden>
+    <div class="card"><div class="empty"><i class="fa-regular fa-circle-question"></i><strong>Ticket não encontrado</strong>
+      <span id="nf-msg">Ele pode ter sido removido.</span><div style="margin-top:14px"><a class="btn" href="tickets.html">Voltar para Tickets</a></div></div></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="auth.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="alerts.js"></script>
+<script src="layout.js"></script>
+<script src="notifications.js"></script>
+<script src="ticket.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visão geral · Inova+ Helpdesk</title>
+  <!-- Ícone do aplicativo -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="alternate icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#16121f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    /* Gráfico de colunas (volume por dia) */
+    .chart { height: 200px; display: grid; grid-template-columns: 30px 1fr; gap: 8px; }
+    .chart-y { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--text-3); text-align: right; padding-bottom: 22px; font-variant-numeric: tabular-nums; line-height: 1; }
+    .chart-plot { position: relative; display: flex; align-items: flex-end; gap: 6px; padding-bottom: 22px; }
+    .grid-area { position: absolute; left: 0; right: 0; top: 0; bottom: 22px; border-bottom: 1px solid var(--border-strong); pointer-events: none; }
+    .grid-line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); }
+    .col { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; }
+    .col .bar { width: 100%; max-width: 26px; background: var(--primary); border-radius: 4px 4px 0 0; transition: opacity .1s; }
+    .col:hover .bar, .col:focus-visible .bar { opacity: .75; }
+    .col .x { position: absolute; bottom: -20px; font-size: 10.5px; color: var(--text-3); white-space: nowrap; }
+    .col.today .x { color: var(--text); font-weight: 600; }
+    .tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #101828; color: #fff; font-size: 12px; padding: 5px 8px; border-radius: 6px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .1s; z-index: 2; }
+    .col:hover .tip, .col:focus-visible .tip { opacity: 1; }
+    .col:first-child .tip { left: 0; transform: none; }
+    .col:last-child .tip { left: auto; right: 0; transform: none; }
+    .chart-note { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+
+    .team-table td, .team-table th { padding: 8px 12px; }
+    .team-table tbody tr { cursor: default; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .load .bar-track { min-width: 60px; }
+
+    .welcome { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+    .welcome h1 { font-size: 20px; font-weight: 700; }
+    .welcome p { color: var(--text-3); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<div id="page" class="page" data-nav="dashboard" hidden>
+  <div class="welcome">
+    <div>
+      <h1 id="hello">Olá!</h1>
+      <p id="hello-sub">Resumo do atendimento em tempo real.</p>
+    </div>
+    <div class="page-actions">
+      <span class="muted" style="font-size:12.5px;align-self:center" id="sync-label">Carregando…</span>
+      <a class="btn btn-sm" href="tickets.html?view=mine"><i class="fa-solid fa-user-check"></i> Minha fila</a>
+      <a class="btn btn-sm btn-primary" href="new-ticket.html"><i class="fa-solid fa-plus"></i> Novo ticket</a>
+    </div>
+  </div>
+
+  <div id="offline-banner"></div>
+
+  <!-- Indicadores -->
+  <section class="kpis" aria-label="Indicadores">
+    <a class="card kpi is-info" href="tickets.html?view=unresolved">
+      <span class="kpi-label"><i class="fa-regular fa-folder-open"></i> Não resolvidos</span>
+      <span class="kpi-value" id="k-open">0</span>
+      <span class="kpi-foot" id="k-open-foot">—</span>
+    </a>
+    <a class="card kpi is-warn" href="tickets.html?view=queue">
+      <span class="kpi-label"><i class="fa-solid fa-inbox"></i> Na fila sem atendimento</span>
+      <span class="kpi-value" id="k-queue">0</span>
+      <span class="kpi-foot" id="k-queue-foot">—</span>
+    </a>
+    <a class="card kpi" id="k-sla-card" href="tickets.html?view=sla">
+      <span class="kpi-label"><i class="fa-solid fa-hourglass-half"></i> SLA em risco / violado</span>
+      <span class="kpi-value" id="k-sla">0</span>
+      <span class="kpi-foot" id="k-sla-foot">—</span>
+    </a>
+    <a class="card kpi is-ok" href="tickets.html?view=resolved">
+      <span class="kpi-label"><i class="fa-regular fa-circle-check"></i> Resolvidos / fechados</span>
+      <span class="kpi-value" id="k-done">0</span>
+      <span class="kpi-foot" id="k-done-foot">—</span>
+    </a>
+  </section>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-user-check" style="color:var(--primary)"></i> Minha fila <span class="count" id="mine-count">0</span></h2>
+        <a class="card-link" href="tickets.html?view=mine">Ver todos</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Ticket</th><th>Status</th><th>Prioridade</th><th>SLA</th></tr></thead>
+          <tbody id="mine-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i> Precisam de atenção</h2>
+        <a class="card-link" href="alerts.html">Alertas</a>
+      </div>
+      <div class="list" id="risk-list"></div>
+    </section>
+  </div>
+
+  <div class="grid-3">
+    <section class="card" style="grid-column: span 2">
+      <div class="card-header">
+        <h2>Tickets abertos por dia <span class="sub">últimos 14 dias</span></h2>
+        <span class="sub" id="vol-total"></span>
+      </div>
+      <div class="card-body">
+        <div class="chart" id="vol-chart" role="img" aria-label="Gráfico de tickets abertos por dia"></div>
+        <p class="chart-note" id="vol-note"></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Não resolvidos por prioridade</h2></div>
+      <div class="card-body"><div class="bars" id="prio-bars"></div></div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-header">
+        <h2>Carga da equipe</h2>
+        <a class="card-link" href="team.html">Equipe</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table team-table">
+          <thead><tr><th>Agente</th><th class="num">Não resolvidos</th><th class="num">Em andamento</th><th class="num">Resolvidos</th><th style="width:28%">Carga</th></tr></thead>
+          <tbody id="team-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header"><h2>Não resolvidos por categoria</h2><a class="card-link" href="tickets.html">Tickets</a></div>
+      <div class="card-body"><div class="bars" id="cat-bars"></div></div>
+    </section>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="auth.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="alerts.js"></script>
+<script src="layout.js"></script>
+<script src="notifications.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

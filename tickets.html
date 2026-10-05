@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tickets · Inova+ Helpdesk</title>
+  <!-- Ícone do aplicativo -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+  <link rel="alternate icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#16121f" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    .tk-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); height: 100%; }
+    .views { border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; padding: 16px 10px; }
+    .views h2 { font-size: 12px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; padding: 0 10px 8px; }
+    .views h2 + .view-list { margin-bottom: 18px; }
+    .view { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border: none; background: none; border-radius: 6px; font-size: 13.5px; color: var(--text-2); text-align: left; }
+    .view:hover { background: var(--surface-3); }
+    .view.active { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+    .view i { width: 15px; text-align: center; color: var(--text-3); font-size: 13px; }
+    .view.active i { color: var(--primary); }
+    .view .n { margin-left: auto; font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .view .n.hot { color: var(--danger); font-weight: 700; }
+    .view.active .n { color: var(--primary); }
+
+    .tk-main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .tk-head { padding: 18px 24px 12px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .tk-head .page-header { margin-bottom: 12px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .toolbar .search { position: relative; flex: 1; min-width: 220px; max-width: 360px; }
+    .toolbar .search i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; }
+    .toolbar .search .input { padding-left: 30px; }
+    .toolbar .select { width: auto; min-width: 150px; }
+    .toolbar .right { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--text-3); }
+
+    .bulk { display: none; align-items: center; gap: 8px; padding: 8px 24px; background: #f5f3ff; border-bottom: 1px solid #ddd6fe; font-size: 13px; }
+    .bulk.show { display: flex; }
+    .bulk strong { color: var(--primary); }
+
+    .tk-table { flex: 1; overflow: auto; background: var(--surface); }
+    .tk-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 24px; border-top: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--text-3); }
+    .pager { display: flex; gap: 6px; align-items: center; }
+
+    .views-toggle { display: none; }
+    .tk-table .t-subject { max-width: 380px; }
+    .tk-table td { white-space: nowrap; }
+    .tk-table td:nth-child(3) { white-space: normal; }
+    @media (max-width: 1000px) {
+      .tk-layout { grid-template-columns: 1fr; }
+      .views { display: none; position: absolute; z-index: 20; width: 260px; height: calc(100vh - var(--topbar-h)); box-shadow: var(--shadow-lg); }
+      .views.open { display: block; }
+      .views-toggle { display: inline-flex; }
+      .tk-head, .bulk, .tk-foot { padding-left: 16px; padding-right: 16px; }
+      .col-upd { display: none; }
+    }
+    @media (max-width: 1520px) { .col-upd { display: none; } }
+    @media (max-width: 640px) {
+      .col-assignee, .col-prio { display: none; }
+      #tk-table th:nth-child(2), #tk-table td:nth-child(2), #tk-table th:nth-child(7), #tk-table td:nth-child(7) { display: none; }
+      .tk-table .t-subject { max-width: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="page" class="page-full" data-nav="tickets" hidden>
+  <div class="tk-layout">
+
+    <!-- Visualizações (filas) -->
+    <aside class="views" id="views" aria-label="Visualizações">
+      <h2>Visualizações</h2>
+      <div class="view-list" id="view-list"></div>
+      <h2>Por categoria</h2>
+      <div class="view-list" id="cat-list"></div>
+    </aside>
+
+    <section class="tk-main">
+      <div class="tk-head">
+        <div class="page-header">
+          <div>
+            <h1 id="view-title">Tickets não resolvidos</h1>
+            <p id="view-desc">Todos os tickets abertos ou em andamento.</p>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-sm views-toggle" type="button" onclick="document.getElementById('views').classList.toggle('open')"><i class="fa-solid fa-layer-group"></i> Visualizações</button>
+            <button class="btn btn-sm" type="button" id="btn-refresh" title="Atualizar"><i class="fa-solid fa-rotate-right"></i> Atualizar</button>
+            <button class="btn btn-sm" type="button" id="btn-export"><i class="fa-solid fa-file-csv"></i> Exportar CSV</button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="input input-sm" id="f-search" type="search" placeholder="Filtrar nesta visualização…" />
+          </div>
+          <select class="select select-sm" id="f-priority" aria-label="Prioridade">
+            <option value="">Todas as prioridades</option>
+            <option>Crítica</option><option>Alta</option><option>Média</option><option>Baixa</option>
+          </select>
+          <select class="select select-sm" id="f-assignee" aria-label="Responsável">
+            <option value="">Todos os responsáveis</option>
+          </select>
+          <button class="btn btn-sm btn-ghost" type="button" id="f-clear"><i class="fa-solid fa-xmark"></i> Limpar</button>
+          <div class="right"><span id="sync-label">Carregando…</span></div>
+        </div>
+      </div>
+
+      <div class="bulk" id="bulk" role="region" aria-label="Ações em lote">
+        <strong id="bulk-count">0 selecionados</strong>
+        <button class="btn btn-sm" type="button" data-bulk="attend"><i class="fa-solid fa-user-check"></i> Atribuir a mim</button>
+        <button class="btn btn-sm btn-success" type="button" data-bulk="resolve"><i class="fa-solid fa-check"></i> Resolver</button>
+        <button class="btn btn-sm btn-danger" type="button" data-bulk="close"><i class="fa-solid fa-lock"></i> Fechar</button>
+        <button class="btn btn-sm btn-ghost" type="button" data-bulk="clear">Limpar seleção</button>
+      </div>
+
+      <div class="tk-table">
+        <table class="table" id="tk-table">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" class="checkbox" id="check-all" aria-label="Selecionar todos" /></th>
+              <th class="sortable" data-sort="id">ID <span class="sort-ind">▼</span></th>
+              <th class="sortable" data-sort="subject">Assunto <span class="sort-ind">▼</span></th>
+              <th class="sortable" data-sort="status">Status <span class="sort-ind">▼</span></th>
+              <th class="sortable col-prio" data-sort="priority">Prioridade <span class="sort-ind">▼</span></th>
+              <th class="sortable col-assignee" data-sort="assignee">Responsável <span class="sort-ind">▼</span></th>
+              <th class="sortable" data-sort="sla">SLA <span class="sort-ind">▼</span></th>
+              <th class="sortable col-upd" data-sort="updated">Atualizado <span class="sort-ind">▼</span></th>
+            </tr>
+          </thead>
+          <tbody id="tk-body"></tbody>
+        </table>
+      </div>
+
+      <div class="tk-foot">
+        <span id="foot-info">—</span>
+        <div class="pager">
+          <select class="select select-sm" id="page-size" style="width:auto" aria-label="Itens por página">
+            <option value="25">25 por página</option><option value="50">50 por página</option><option value="100">100 por página</option>
+          </select>
+          <button class="btn btn-sm btn-icon" type="button" id="pg-prev" aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>
+          <span id="pg-label">1 / 1</span>
+          <button class="btn btn-sm btn-icon" type="button" id="pg-next" aria-label="Próxima página"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="auth.js"></script>
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script src="alerts.js"></script>
+<script src="layout.js"></script>
+<script src="notifications.js"></script>
+<script src="tickets.js"></script>
+</body>
+</html>
